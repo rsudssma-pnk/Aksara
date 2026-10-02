@@ -1,0 +1,35 @@
+name: AKSARA CI Validation
+on:
+  push:
+    branches: ["main","gh-pages"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate required files
+        run: |
+          test -f index.html
+          test -f app.js
+          test -f styles.css
+          test -f 404.html
+      - name: JavaScript syntax
+        run: node --check app.js
+      - name: Frontend reference check
+        run: |
+          grep -q 'app.js' index.html
+          grep -q 'styles.css' index.html
+          grep -q 'nbewlpbbvtwtuvamadle.supabase.co' app.js
+      - name: Credential safety check
+        run: |
+          if grep -RniE 'service[_-]?role|SUPABASE_SERVICE_ROLE|secret_key|sb_secret_' --exclude-dir=.git .; then
+            echo "Forbidden server credential reference detected."
+            exit 1
+          fi
