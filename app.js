@@ -104,7 +104,7 @@ async function uploadEvidence(){
     if(msg)msg.textContent="Membuat evidence…";
     const ins=await supabase.from("evidence").insert({primary_ep_id:ep,title,mime_type:file.type||"application/octet-stream",category:file.type,status:"DRAFT",created_by:state.user.id,updated_by:state.user.id}).select("id").single();
     if(ins.error)throw ins.error;
-    const evidenceId=ins.data.id;const path="evidence/"+ep+"/"+evidenceId+"/"+Date.now()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const evidenceId=ins.data.id;const path="evidence/"+evidenceId+"/"+ep+"/"+Date.now()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
     const up=await supabase.storage.from("accreditation-evidence").upload(path,file,{upsert:false,contentType:file.type||"application/octet-stream"});
     if(up.error)throw up.error;
     const v=await supabase.from("evidence_versions").insert({evidence_id:evidenceId,version_no:1,storage_path:path,original_filename:file.name,size_bytes:file.size,mime_type:file.type,uploaded_by:state.user.id,scan_status:"NOT_SCANNED"}).select("id").single();
