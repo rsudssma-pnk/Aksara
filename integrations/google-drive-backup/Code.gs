@@ -9,7 +9,7 @@ function doGet(e) {
   return json_({
     ok: true,
     service: 'AKSARA Google Drive Backup',
-    version: '1.0.0',
+    version: '1.0.1',
     timestamp: new Date().toISOString(),
   });
 }
