@@ -504,40 +504,58 @@
     boot();
     try {
       if (!window.supabase?.createClient) throw new Error("Supabase JS SDK tidak termuat.");
-      sb = window.supabase.createClient(CONFIG.URL, CONFIG.KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+      sb = window.supabase.createClient(CONFIG.URL, CONFIG.KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
+
       await loadMaster();
 
       const current = await sb.auth.getSession();
       if (current.error) throw current.error;
+
       if (current.data.session) {
-        state.session = current.data.session; state.user = current.data.session.user;
+        state.session = current.data.session;
+        state.user = current.data.session.user;
         await loadMaster();
         await loadPrivate();
         if (!hasRole("SUPER_ADMIN") && data.pokja.length === 1) state.matrixPokja = data.pokja[0].code;
-              else if (hasRole("SUPER_ADMIN")) state.matrixPokja = "ALL";
-    else if (hasRole("SUPER_ADMIN")) state.matrixPokja = "ALL";
         else if (hasRole("SUPER_ADMIN")) state.matrixPokja = "ALL";
+        setupRealtime();
       }
 
       sb.auth.onAuthStateChange((_event, session) => {
         window.setTimeout(async () => {
-          state.session = session; state.user = session?.user || null;
+          state.session = session;
+          state.user = session?.user || null;
+
           if (session) {
             try {
               await loadMaster();
               await loadPrivate();
-              if (!hasRole("SUPER_ADMIN") && data.pokja.length === 1) state.matrixPokja = data.pokja[0].code;
+              if (hasRole("SUPER_ADMIN")) state.matrixPokja = "ALL";
+              else if (data.pokja.length === 1) state.matrixPokja = data.pokja[0].code;
+              setupRealtime();
             } catch (e) {
               data.errors.push({ area: "Auth", message: e.message });
             }
           } else {
-            if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
-            state.roles = []; state.matrixPokja = "ALL"; data.summary = null; data.readiness = []; data.evidence = []; data.evidenceLinks = []; data.driveBackups = [];
+            if (realtimeChannel) {
+              sb.removeChannel(realtimeChannel);
+              realtimeChannel = null;
+            }
+            state.roles = [];
+            state.matrixPokja = "ALL";
+            data.summary = null;
+            data.readiness = [];
+            data.evidence = [];
+            data.evidenceLinks = [];
+            data.driveBackups = [];
             try { await loadMaster(); } catch (_) {}
           }
           render();
         }, 0);
       });
+
       render();
     } catch (e) {
       fatal(e);
