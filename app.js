@@ -10,10 +10,12 @@
   });
 
   const app = document.getElementById("app");
-  const state = { page: "dashboard", q: "", pokja: "ALL", matrixPokja: "", strength: "ALL", matrixPage: 1, epPage: 1, session: null, user: null, roles: [] };
+  const state = { page: "dashboard", q: "", pokja: "ALL", matrixPokja: "ALL", strength: "ALL", matrixPage: 1, epPage: 1, session: null, user: null, roles: [] };
   const data = { pokja: [], eps: [], relations: [], matrix: null, evidence: [], evidenceLinks: [], readiness: [], summary: null, driveBackups: [], errors: [] };
   let sb = null;
   let searchTimer = null;
+  let realtimeChannel = null;
+  let refreshInFlight = false;
 
   const $ = (s) => document.querySelector(s);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[c]);
@@ -98,6 +100,27 @@
       .order("created_at", { ascending: false }).limit(500);
     data.driveBackups = backup.data || [];
     if (backup.error) data.errors.push({ area: "Google Drive", message: backup.error.message });
+  }
+
+  async function refreshPrivateData() {
+    if (!state.session || refreshInFlight) return;
+    refreshInFlight = true;
+    try {
+      await loadPrivate();
+      render();
+    } finally {
+      refreshInFlight = false;
+    }
+  }
+
+  function setupRealtime() {
+    if (!sb || !state.session) return;
+    if (realtimeChannel) sb.removeChannel(realtimeChannel);
+    realtimeChannel = sb.channel("aksara-live-" + state.user.id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "evidence" }, () => refreshPrivateData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "evidence_versions" }, () => refreshPrivateData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "evidence_drive_backups" }, () => refreshPrivateData())
+      .subscribe();
   }
 
   function hasRole(code) {
@@ -225,7 +248,7 @@
   }
 
   function matrixPage() {
-    const selected = state.matrixPokja;
+    const selected = state.matrixPokja || "ALL";
     const q = state.q.trim().toLowerCase();
     const rows = data.relations.filter((r) => {
       const p = selected === "ALL" || r.source_pokja === selected || r.target_pokja === selected;
@@ -233,11 +256,11 @@
       const hay = [r.source_ep, r.source_pokja, r.target_ep, r.target_pokja, r.relation_type, r.relation_type_name, r.rationale, r.evidence_text].join(" ").toLowerCase();
       return p && s && (!q || hay.includes(q));
     });
-    const total = selected ? Math.max(1, Math.ceil(rows.length / 50)) : 1;
+    const total = Math.max(1, Math.ceil(rows.length / 50));
     state.matrixPage = Math.min(Math.max(1, state.matrixPage), total);
     const outward = selected === "ALL" ? 0 : rows.filter((r) => r.source_pokja === selected).length;
     const inward = selected === "ALL" ? 0 : rows.filter((r) => r.target_pokja === selected).length;
-    const shown = selected ? rows.slice((state.matrixPage - 1) * 50, state.matrixPage * 50) : [];
+    const shown = rows.slice((state.matrixPage - 1) * 50, state.matrixPage * 50);
     const body = shown.map((r) => '<tr><td><b class="code">' + esc(r.source_ep) + '</b><div class="muted tiny">' + esc(r.source_pokja || "—") + '</div></td>' +
       '<td><b class="code">' + esc(r.target_ep) + '</b><div class="muted tiny">' + esc(r.target_pokja || "—") + '</div></td><td><span class="pill ' +
       String(r.strength || "").toLowerCase() + '">' + esc(r.strength || "—") + '</span>' + (r.coordination_required ? '<div class="ok tiny">Koordinasi wajib</div>' : "") +
@@ -247,11 +270,11 @@
       '<td class="tiny">Source hlm. ' + esc(r.source_page || "—") + '<br>Target hlm. ' + esc(r.target_page || "—") + '</td></tr>').join("");
     return header("Cross-Pokja", "Integration Matrix", "Pilih satu Pokja untuk melihat hanya relasi yang masuk/keluar Pokja tersebut. Setiap relasi menampilkan alasan, checkpoint evidence, strength, status, dan sumber halaman.",
       '<span class="badge draft">' + esc(data.matrix?.version_no || "—") + "</span>") + warnings() +
-      '<section class="section"><div class="matrix-focus"><div><div class="eyebrow">POKJA TERPILIH</div><h2>' + esc(selected === "" ? "Belum dipilih" : selected) +
-      '</h2><p>' + esc(selected === "" ? "Pilih satu Pokja di bawah agar tampilan fokus." : (data.pokja.find((p) => p.code === selected)?.name || "")) +
+      '<section class="section"><div class="matrix-focus"><div><div class="eyebrow">POKJA TERPILIH</div><h2>' + esc(selected === "ALL" ? "Semua Pokja" : selected) +
+      '</h2><p>' + esc(selected === "ALL" ? "Seluruh relasi matrix terbit." : (data.pokja.find((p) => p.code === selected)?.name || "")) +
       '</p></div><div class="focus-stat"><b>' + fmt(rows.length) + '</b><span>relasi</span></div><div class="focus-stat"><b>' + fmt(outward) +
       '</b><span>keluar</span></div><div class="focus-stat"><b>' + fmt(inward) + '</b><span>masuk</span></div></div><div class="toolbar">' +
-      '<select id="matrixPokja" class="select"><option value="">Pilih Pokja…</option>' + data.pokja.map((p) =>
+      '<select id="matrixPokja" class="select"><option value="ALL">Semua Pokja</option>' + data.pokja.map((p) =>
       '<option value="' + esc(p.code) + '" ' + (selected === p.code ? "selected" : "") + '>' + esc(p.code) + " — " + esc(p.name) + "</option>").join("") +
       '</select><select id="strength" class="select"><option value="ALL">Semua strength</option><option value="A" ' + (state.strength === "A" ? "selected" : "") +
       '>A — eksplisit</option><option value="B" ' + (state.strength === "B" ? "selected" : "") + '>B — operasional kuat</option><option value="C" ' +
@@ -401,7 +424,7 @@
       return;
     }
     state.session = result.data.session; state.user = result.data.user;
-    await loadPrivate(); render();
+    await loadPrivate(); setupRealtime(); render();
   }
 
   function safeName(name) {
@@ -491,6 +514,9 @@
         await loadMaster();
         await loadPrivate();
         if (!hasRole("SUPER_ADMIN") && data.pokja.length === 1) state.matrixPokja = data.pokja[0].code;
+              else if (hasRole("SUPER_ADMIN")) state.matrixPokja = "ALL";
+    else if (hasRole("SUPER_ADMIN")) state.matrixPokja = "ALL";
+        else if (hasRole("SUPER_ADMIN")) state.matrixPokja = "ALL";
       }
 
       sb.auth.onAuthStateChange((_event, session) => {
@@ -505,7 +531,8 @@
               data.errors.push({ area: "Auth", message: e.message });
             }
           } else {
-            state.roles = []; state.matrixPokja = ""; data.summary = null; data.readiness = []; data.evidence = []; data.evidenceLinks = []; data.driveBackups = [];
+            if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+            state.roles = []; state.matrixPokja = "ALL"; data.summary = null; data.readiness = []; data.evidence = []; data.evidenceLinks = []; data.driveBackups = [];
             try { await loadMaster(); } catch (_) {}
           }
           render();
@@ -517,5 +544,7 @@
     }
   }
 
+  window.addEventListener("focus", () => refreshPrivateData());
+  window.setInterval(() => refreshPrivateData(), 60000);
   init();
 })();
