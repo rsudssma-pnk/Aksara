@@ -10,7 +10,7 @@
   });
 
   const app = document.getElementById("app");
-  const state = { page: "dashboard", q: "", pokja: "ALL", strength: "ALL", matrixPage: 1, epPage: 1, session: null, user: null, roles: [] };
+  const state = { page: "dashboard", q: "", pokja: "ALL", matrixPokja: "", strength: "ALL", matrixPage: 1, epPage: 1, session: null, user: null, roles: [] };
   const data = { pokja: [], eps: [], relations: [], matrix: null, evidence: [], evidenceLinks: [], readiness: [], summary: null, driveBackups: [], errors: [] };
   let sb = null;
   let searchTimer = null;
@@ -225,7 +225,7 @@
   }
 
   function matrixPage() {
-    const selected = state.pokja;
+    const selected = state.matrixPokja;
     const q = state.q.trim().toLowerCase();
     const rows = data.relations.filter((r) => {
       const p = selected === "ALL" || r.source_pokja === selected || r.target_pokja === selected;
@@ -233,11 +233,11 @@
       const hay = [r.source_ep, r.source_pokja, r.target_ep, r.target_pokja, r.relation_type, r.relation_type_name, r.rationale, r.evidence_text].join(" ").toLowerCase();
       return p && s && (!q || hay.includes(q));
     });
-    const total = Math.max(1, Math.ceil(rows.length / 50));
+    const total = selected ? Math.max(1, Math.ceil(rows.length / 50)) : 1;
     state.matrixPage = Math.min(Math.max(1, state.matrixPage), total);
     const outward = selected === "ALL" ? 0 : rows.filter((r) => r.source_pokja === selected).length;
     const inward = selected === "ALL" ? 0 : rows.filter((r) => r.target_pokja === selected).length;
-    const shown = rows.slice((state.matrixPage - 1) * 50, state.matrixPage * 50);
+    const shown = selected ? rows.slice((state.matrixPage - 1) * 50, state.matrixPage * 50) : [];
     const body = shown.map((r) => '<tr><td><b class="code">' + esc(r.source_ep) + '</b><div class="muted tiny">' + esc(r.source_pokja || "—") + '</div></td>' +
       '<td><b class="code">' + esc(r.target_ep) + '</b><div class="muted tiny">' + esc(r.target_pokja || "—") + '</div></td><td><span class="pill ' +
       String(r.strength || "").toLowerCase() + '">' + esc(r.strength || "—") + '</span>' + (r.coordination_required ? '<div class="ok tiny">Koordinasi wajib</div>' : "") +
@@ -247,11 +247,11 @@
       '<td class="tiny">Source hlm. ' + esc(r.source_page || "—") + '<br>Target hlm. ' + esc(r.target_page || "—") + '</td></tr>').join("");
     return header("Cross-Pokja", "Integration Matrix", "Pilih satu Pokja untuk melihat hanya relasi yang masuk/keluar Pokja tersebut. Setiap relasi menampilkan alasan, checkpoint evidence, strength, status, dan sumber halaman.",
       '<span class="badge draft">' + esc(data.matrix?.version_no || "—") + "</span>") + warnings() +
-      '<section class="section"><div class="matrix-focus"><div><div class="eyebrow">POKJA TERPILIH</div><h2>' + esc(selected === "ALL" ? "Belum dipilih" : selected) +
-      '</h2><p>' + esc(selected === "ALL" ? "Pilih satu Pokja di bawah agar tampilan fokus." : (data.pokja.find((p) => p.code === selected)?.name || "")) +
+      '<section class="section"><div class="matrix-focus"><div><div class="eyebrow">POKJA TERPILIH</div><h2>' + esc(selected === "" ? "Belum dipilih" : selected) +
+      '</h2><p>' + esc(selected === "" ? "Pilih satu Pokja di bawah agar tampilan fokus." : (data.pokja.find((p) => p.code === selected)?.name || "")) +
       '</p></div><div class="focus-stat"><b>' + fmt(rows.length) + '</b><span>relasi</span></div><div class="focus-stat"><b>' + fmt(outward) +
       '</b><span>keluar</span></div><div class="focus-stat"><b>' + fmt(inward) + '</b><span>masuk</span></div></div><div class="toolbar">' +
-      '<select id="matrixPokja" class="select"><option value="ALL">Pilih Pokja…</option>' + data.pokja.map((p) =>
+      '<select id="matrixPokja" class="select"><option value="">Pilih Pokja…</option>' + data.pokja.map((p) =>
       '<option value="' + esc(p.code) + '" ' + (selected === p.code ? "selected" : "") + '>' + esc(p.code) + " — " + esc(p.name) + "</option>").join("") +
       '</select><select id="strength" class="select"><option value="ALL">Semua strength</option><option value="A" ' + (state.strength === "A" ? "selected" : "") +
       '>A — eksplisit</option><option value="B" ' + (state.strength === "B" ? "selected" : "") + '>B — operasional kuat</option><option value="C" ' +
@@ -348,9 +348,9 @@
       clearTimeout(searchTimer); searchTimer = setTimeout(render, 140);
     });
     $("#pokja")?.addEventListener("change", (e) => { state.pokja = e.target.value; state.epPage = 1; render(); });
-    $("#matrixPokja")?.addEventListener("change", (e) => { state.pokja = e.target.value; state.matrixPage = 1; state.q = ""; render(); });
+    $("#matrixPokja")?.addEventListener("change", (e) => { state.matrixPokja = e.target.value; state.matrixPage = 1; state.q = ""; render(); });
     $("#strength")?.addEventListener("change", (e) => { state.strength = e.target.value; state.matrixPage = 1; render(); });
-    $("#clear")?.addEventListener("click", () => { state.q = ""; state.pokja = "ALL"; state.strength = "ALL"; state.epPage = 1; state.matrixPage = 1; render(); });
+    $("#clear")?.addEventListener("click", () => { state.q = ""; state.strength = "ALL"; if (state.page === "matrix") state.matrixPokja = ""; else state.pokja = "ALL"; state.epPage = 1; state.matrixPage = 1; render(); });
     $("#epPrev")?.addEventListener("click", () => { state.epPage--; render(); });
     $("#epNext")?.addEventListener("click", () => { state.epPage++; render(); });
     $("#matrixPrev")?.addEventListener("click", () => { state.matrixPage--; render(); });
