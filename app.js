@@ -488,16 +488,25 @@
       if (current.error) throw current.error;
       if (current.data.session) {
         state.session = current.data.session; state.user = current.data.session.user;
+        await loadMaster();
         await loadPrivate();
+        if (!hasRole("SUPER_ADMIN") && data.pokja.length === 1) state.matrixPokja = data.pokja[0].code;
       }
 
       sb.auth.onAuthStateChange((_event, session) => {
         window.setTimeout(async () => {
           state.session = session; state.user = session?.user || null;
           if (session) {
-            try { await loadPrivate(); } catch (e) { data.errors.push({ area: "Auth", message: e.message }); }
+            try {
+              await loadMaster();
+              await loadPrivate();
+              if (!hasRole("SUPER_ADMIN") && data.pokja.length === 1) state.matrixPokja = data.pokja[0].code;
+            } catch (e) {
+              data.errors.push({ area: "Auth", message: e.message });
+            }
           } else {
-            state.roles = []; data.summary = null; data.readiness = []; data.evidence = []; data.evidenceLinks = []; data.driveBackups = [];
+            state.roles = []; state.matrixPokja = ""; data.summary = null; data.readiness = []; data.evidence = []; data.evidenceLinks = []; data.driveBackups = [];
+            try { await loadMaster(); } catch (_) {}
           }
           render();
         }, 0);
