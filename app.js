@@ -256,11 +256,11 @@
       const hay = [r.source_ep, r.source_pokja, r.target_ep, r.target_pokja, r.relation_type, r.relation_type_name, r.rationale, r.evidence_text].join(" ").toLowerCase();
       return p && s && (!q || hay.includes(q));
     });
-    const total = Math.max(1, Math.ceil(rows.length / 50));
+    const total = Math.max(1, Math.ceil(rows.length / 100));
     state.matrixPage = Math.min(Math.max(1, state.matrixPage), total);
     const outward = selected === "ALL" ? 0 : rows.filter((r) => r.source_pokja === selected).length;
     const inward = selected === "ALL" ? 0 : rows.filter((r) => r.target_pokja === selected).length;
-    const shown = rows.slice((state.matrixPage - 1) * 50, state.matrixPage * 50);
+    const shown = rows.slice((state.matrixPage - 1) * 100, state.matrixPage * 100);
     const body = shown.map((r) => '<tr><td><b class="code">' + esc(r.source_ep) + '</b><div class="muted tiny">' + esc(r.source_pokja || "—") + '</div></td>' +
       '<td><b class="code">' + esc(r.target_ep) + '</b><div class="muted tiny">' + esc(r.target_pokja || "—") + '</div></td><td><span class="pill ' +
       String(r.strength || "").toLowerCase() + '">' + esc(r.strength || "—") + '</span>' + (r.coordination_required ? '<div class="ok tiny">Koordinasi wajib</div>' : "") +
