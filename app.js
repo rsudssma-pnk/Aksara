@@ -38,7 +38,7 @@
 
   const $ = (s) => document.querySelector(s);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", """: "&quot;", "'": "&#039;"
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   })[c]);
   const fmt = (v) => Number(v || 0).toLocaleString("id-ID");
   const pct = (n, d) => d ? Math.round((n / d) * 1000) / 10 : 0;
@@ -242,7 +242,7 @@
       metricCard("Elemen Penilaian", fmt(data.eps.length), "Anchor akreditasi", "✓") +
       metricCard("Integration Matrix", fmt(data.relations.length), "Relasi lintas-Pokja", "↔") +
       metricCard("Evidence terupload", state.session ? fmt(es.assets) : "Login", state.session ? es.percentage + "% EP sudah memiliki evidence" : "Masuk untuk melihat progres evidence", "⬆") +
-      "</div>' +
+      '</div>' +
       '<div class="section-grid"><section class="section"><div class="section-head"><div><h3>Coverage Evidence per Pokja</h3><p>Persentase dihitung otomatis: EP dengan evidence aktif ÷ total EP Pokja.</p></div>' +
       '<span class="pill ok">' + (state.session ? es.percentage + "% overall" : "Data internal") + "</span></div>" +
       '<div class="table-wrap"><table class="table"><thead><tr><th>Pokja</th><th>Total EP</th><th>EP + Evidence</th><th>Asset</th><th>Coverage</th></tr></thead><tbody>' +
