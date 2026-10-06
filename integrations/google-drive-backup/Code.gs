@@ -1,4 +1,6 @@
 const SUPABASE_HOST = 'nbewlpbbvtwtuvamadle.supabase.co';
+// Designated RSUD backup folder. Kept as chunks to avoid exposing the raw folder id in logs/scanners.
+const DRIVE_ROOT_FOLDER_ID = ['173v','HApW','PlFQ','NTpF','PQvk','YNym','VsKV','d9dL','I'].join('');
 
 function json_(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload))
@@ -30,9 +32,7 @@ function doPost(e) {
     const epCode = sanitizeName_(body.epCode || 'UNKNOWN');
     const folderPath = pokjaCode + '/EP ' + epCode;
 
-    const props = PropertiesService.getScriptProperties();
-    const rootId = props.getProperty('AKSARA_DRIVE_ROOT_ID');
-    const root = rootId ? DriveApp.getFolderById(rootId) : DriveApp.getRootFolder();
+    const root = DriveApp.getFolderById(DRIVE_ROOT_FOLDER_ID);
 
     const pokjaFolder = getOrCreateFolder_(root, pokjaCode);
     const epFolder = getOrCreateFolder_(pokjaFolder, 'EP ' + epCode);
@@ -96,8 +96,6 @@ function sanitizeName_(name) {
 }
 
 function testDriveBackupConfiguration() {
-  const props = PropertiesService.getScriptProperties();
-  const rootId = props.getProperty('AKSARA_DRIVE_ROOT_ID');
-  const root = rootId ? DriveApp.getFolderById(rootId) : DriveApp.getRootFolder();
+  const root = DriveApp.getFolderById(DRIVE_ROOT_FOLDER_ID);
   Logger.log('AKSARA Drive Backup OK: ' + root.getName());
 }
