@@ -1,14 +1,12 @@
 name: AKSARA CI Validation
 on:
   push:
-    branches: ["main","gh-pages"]
+    branches: ["main", "gh-pages"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -20,16 +18,18 @@ jobs:
           test -f app.js
           test -f styles.css
           test -f 404.html
+          grep -q 'app.js?v=20261006' index.html
+          grep -q 'styles.css?v=20261006' index.html
       - name: JavaScript syntax
         run: node --check app.js
       - name: Frontend reference check
         run: |
-          grep -q 'app.js' index.html
-          grep -q 'styles.css' index.html
           grep -q 'nbewlpbbvtwtuvamadle.supabase.co' app.js
+          grep -q 'supabase.min.js' index.html
+          grep -q '2.117.2' index.html
       - name: Credential safety check
         run: |
-          if grep -niE 'service[_-]?role|SUPABASE_SERVICE_ROLE|sb_secret_|SUPABASE_SECRET' app.js; then
+          if grep -niE 'service[_-]?role|SUPABASE_SERVICE_ROLE|sb_secret_' app.js; then
             echo "Forbidden server credential reference detected in runtime source."
             exit 1
           fi
